@@ -1,0 +1,42 @@
+name: release
+
+permissions:
+  contents: write
+  pull-requests: read
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main # リリース用のブランチ
+
+jobs:
+  create:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      TZ: Asia/Tokyo
+    steps:
+      - name: チェックアウトする
+        id: checkout-repository
+        uses: actions/checkout@v4
+
+      - name: Node.js をセットアップする
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: 依存関係をインストールする
+        id: install-dependencies
+        run: npm ci
+
+      - name: リリースを作成する
+        id: run-release-cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: npm run --silent release:create
