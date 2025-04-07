@@ -1,0 +1,44 @@
+name: pull-request
+
+permissions:
+  contents: write
+  pull-requests: write
+  repository-projects: read
+  issues: read
+
+on:
+  push:
+    branches:
+      - staging # リリース前のブランチ
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: チェックアウトする
+        id: checkout-repository
+        uses: actions/checkout@v4
+
+      - name: Node.js をセットアップする
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: 依存関係をインストールする
+        id: install-dependencies
+        run: npm ci
+
+      - name: プルリクエストの作成と更新をする
+        id: run-pull-request-cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length | grep -q '^0$'; then
+            npm run --silent pull-request:create
+          else
+            npm run --silent pull-request:update
+          fi
