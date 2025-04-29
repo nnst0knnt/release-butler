@@ -1,0 +1,40 @@
+name: warning
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main] # リリース用のブランチ
+
+jobs:
+  comment:
+    if: github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: チェックアウトする
+        id: checkout-repository
+        uses: actions/checkout@v4
+
+      - name: Node.js をセットアップする
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: 依存関係をインストールする
+        id: install-dependencies
+        run: npm ci
+
+      - name: 警告コメントを追加する
+        id: run-pull-request-cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          COMMENT: ⚠️ mainブランチへのPull Requestが検知されました
+        run: npm run --silent pull-request:comment
